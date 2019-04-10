@@ -15,18 +15,13 @@ fn make_sin(nsecs: u64, freq: f64) -> Vec<u8> {
     buf
 }
 
-fn make_u32(v: u32) -> [u8;4] {
-    let mut b = [0u8; 4];
-    for i in 0..4 {
-        b[i] = ((v >> (8 * i)) & 0xff) as u8;
-    }
-    b
-}
-
-fn make_u16(v: u16) -> [u8;2] {
-    let mut b = [0u8; 2];
-    for i in 0..2 {
-        b[i] = ((v >> (8 * i)) & 0xff) as u8;
+fn make_bytes<T>(v: T) -> Vec<u8>
+    where T: Into<u64>
+{
+    let v: u64 = v.into();
+    let mut b: Vec<u8> = Vec::new();
+    for i in 0..std::mem::size_of::<T>() {
+        b.push(((v >> (8 * i)) & 0xff) as u8);
     }
     b
 }
@@ -34,7 +29,7 @@ fn make_u16(v: u16) -> [u8;2] {
 fn make_wav(nsamples: usize) -> Vec<u8> {
     let mut buf = Vec::new();
     buf.extend_from_slice(b"RIFF");
-    let rsize = make_u32(20 + nsamples as u32);
+    let rsize = make_bytes(20 + nsamples as u32);
     buf.extend_from_slice(& rsize); // WAVE chunk size
 
     // WAVE chunk
@@ -42,18 +37,18 @@ fn make_wav(nsamples: usize) -> Vec<u8> {
 
     // fmt chunk
     buf.extend_from_slice(b"fmt ");
-    buf.extend_from_slice(& make_u32(16)); // fmt chunk size
-    buf.extend_from_slice(& make_u16(1));  // format code (PCM)
-    buf.extend_from_slice(& make_u16(1));  // number of channels
-    buf.extend_from_slice(& make_u32(SAMPLE_RATE));
-    buf.extend_from_slice(& make_u32(SAMPLE_RATE)); // data rate
-    buf.extend_from_slice(& make_u16(1));  // block size
-    buf.extend_from_slice(& make_u16(8));  // bits per sample
+    buf.extend_from_slice(& make_bytes(16u32)); // fmt chunk size
+    buf.extend_from_slice(& make_bytes(1u16));  // format code (PCM)
+    buf.extend_from_slice(& make_bytes(1u16));  // number of channels
+    buf.extend_from_slice(& make_bytes(SAMPLE_RATE));
+    buf.extend_from_slice(& make_bytes(SAMPLE_RATE)); // data rate
+    buf.extend_from_slice(& make_bytes(1u16));  // block size
+    buf.extend_from_slice(& make_bytes(8u16));  // bits per sample
 
 
     // data chunk
     buf.extend_from_slice(b"data");
-    buf.extend_from_slice(& make_u32(nsamples as u32)); // data chunk size
+    buf.extend_from_slice(& make_bytes(nsamples as u32)); // data chunk size
 
     buf
 }
