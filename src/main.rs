@@ -26,31 +26,43 @@ fn make_bytes<T>(v: T) -> Vec<u8>
     b
 }
 
+enum Field {
+    Desc(&'static [u8]),
+    U16(u16),
+    U32(u32),
+}
+
+impl Field {
+    fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Field::Desc(d) => d.to_vec(),
+            Field::U16(u) => make_bytes(*u),
+            Field::U32(u) => make_bytes(*u),
+        }
+    }
+}
+
 fn make_wav(nsamples: usize) -> Vec<u8> {
-    let mut buf = Vec::new();
-    buf.extend_from_slice(b"RIFF");
-    let rsize = make_bytes(20 + nsamples as u32);
-    buf.extend_from_slice(& rsize); // WAVE chunk size
-
-    // WAVE chunk
-    buf.extend_from_slice(b"WAVE");
-
-    // fmt chunk
-    buf.extend_from_slice(b"fmt ");
-    buf.extend_from_slice(& make_bytes(16u32)); // fmt chunk size
-    buf.extend_from_slice(& make_bytes(1u16));  // format code (PCM)
-    buf.extend_from_slice(& make_bytes(1u16));  // number of channels
-    buf.extend_from_slice(& make_bytes(SAMPLE_RATE));
-    buf.extend_from_slice(& make_bytes(SAMPLE_RATE)); // data rate
-    buf.extend_from_slice(& make_bytes(1u16));  // block size
-    buf.extend_from_slice(& make_bytes(8u16));  // bits per sample
-
-
-    // data chunk
-    buf.extend_from_slice(b"data");
-    buf.extend_from_slice(& make_bytes(nsamples as u32)); // data chunk size
-
-    buf
+    let fields = vec![
+        // RIFF chunk
+        Field::Desc(b"RIFF"),
+        Field::U32(20 + nsamples as u32),
+        // WAVE chunk
+        Field::Desc(b"WAVE"),
+        // fmt chunk
+        Field::Desc(b"fmt "),
+        Field::U32(16), // fmt chunk size
+        Field::U16(1),  // format code (PCM)
+        Field::U16(1),  // number of channels
+        Field::U32(SAMPLE_RATE), // sample rate
+        Field::U32(SAMPLE_RATE), // data rate
+        Field::U16(1),  // block size
+        Field::U16(8),  // bits per sample
+        // data chunk
+        Field::Desc(b"data"),
+        Field::U32(nsamples as u32),
+    ];
+    fields.iter().flat_map(|f| f.to_bytes()).collect::<Vec<u8>>()
 }
 
 fn main() {
